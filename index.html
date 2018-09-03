@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<button type="button" id="add">Add Root</button>
+<div id="canvas">
+
+</div>
+<script src="tree.js"></script>
+<script>
+    const jstree = new JsTreeRenderer('#canvas');
+
+    const el = (selector, parent) => {
+        const els = Array.from((parent || document).querySelectorAll(selector));
+
+        return els;
+    };
+
+    const on = (els, events, func, capture) => {
+        events.split(',').forEach(v => {
+            els.forEach(e => {
+                e.addEventListener(v, func, capture);
+            });
+        });
+    };
+
+    on(el('#add'), 'click', _ => jstree.create(el('.js-tree__list')[0]), false);
+</script>
+</body>
+</html>
