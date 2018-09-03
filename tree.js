@@ -133,6 +133,10 @@ const JsTreeRenderer = class {
         this._id = v;
     }
 
+    get scheme(){
+        return [...this._map];
+    }
+
     createRoot(){
         this._canvas.innerHTML = `
             <ul class="js-tree__list">
@@ -185,7 +189,9 @@ const JsTreeRenderer = class {
         const container = this.createChildren();
         const parent = e.target.parentNode;
 
-        this.create(container, this._dom.$('input', parent)[0].id);
+        console.log(this._dom.$('input', parent));
+
+        this.create(container, this._dom.$('label', parent)[0].getAttribute('for'));
 
         parent.appendChild(container);
     }
