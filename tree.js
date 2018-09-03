@@ -165,7 +165,7 @@ const JsTreeRenderer = class {
         const { keyCode, target } = e;
         const value = target.value.trim();
 
-        if(keyCode === 13 && target.value.trim().length){
+        if(keyCode === 13 && value.length){
             this.createTree(id, target, value);
 
             target.parentNode.innerHTML = target.value.trim();
