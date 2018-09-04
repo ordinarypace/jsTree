@@ -135,13 +135,7 @@ const JsTreeRenderer = class {
     }
 
     get scheme(){
-        const scheme = [];
-
-        this._map.forEach((v) => {
-            scheme.push(v);
-        });
-
-        return scheme;
+        return [...this._map.values()];
     }
 
     createRoot(){
@@ -184,7 +178,7 @@ const JsTreeRenderer = class {
     createTree(id, target, value){
         const { parentId } = target.parentNode.dataset;
 
-        if(!id) this._map.set(target.id, new JsTreeList(value, target.id));
+        if(id === undefined) this._map.set(target.id, new JsTreeList(value, target.id));
         else {
             const scheme = this.find(target.id, parentId);
             const item = scheme.add(new JsTreeItem(value, target.id));
