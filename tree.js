@@ -193,8 +193,6 @@ const JsTreeRenderer = class {
         while(scheme.length){
             let { children } = scheme[0];
 
-            console.log(children);
-
             if(!children.length) return scheme[0];
 
             for(let i = 0; i < children.length; i += 1){
