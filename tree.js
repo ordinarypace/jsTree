@@ -118,6 +118,7 @@ const JsTreeItem = class extends JsTree{
 const JsTreeRenderer = class {
     constructor(canvas){
         this._id = 0;
+        this._parentId = '';
         this._dom = new Dom();
         this._map = new Map();
         this._canvas = canvas.nodeType ? canvas :  this._dom.$(canvas)[0];
@@ -149,8 +150,10 @@ const JsTreeRenderer = class {
     }
 
     create(container, id){
-        const item = this._dom.el('li', 'className', 'js-tree__item', 'appendChild',
-            this._dom.el('label', 'setAttribute', ['for', this._id], 'addEventListener', ['dblclick', e => this.modify(e)], 'addEventListener', ['keyup', e => this.createLabel(e, id)], 'appendChild',
+        if(!id) this._parentId = this.id;
+
+        const item = this._dom.el('li', 'className', 'js-tree__item', 'setAttribute', ['data-parent-id', this._parentId], 'appendChild',
+            this._dom.el('label', 'setAttribute', ['for', this._id], 'setAttribute', ['data-parent-id', this._parentId], 'addEventListener', ['dblclick', e => this.modify(e)], 'addEventListener', ['keyup', e => this.createLabel(e, id)], 'appendChild',
                 this._dom.el('input', 'type', 'text', 'id', this._id)
             ), 'appendChild',
             this._dom.el('button', 'type', 'button', 'className', 'js-tree__children-add', 'innerHTML', 'Add Children', 'addEventListener', ['click', e => this.add(e, 'children')])
@@ -173,11 +176,31 @@ const JsTreeRenderer = class {
     }
 
     createTree(id, target, value){
+        const { parentId } = target.parentNode.dataset;
+
         if(!id) this._map.set(target.id, new JsTreeList(value, target.id));
         else {
-            const item = this._map.get(id).add(new JsTreeItem(value));
+            const scheme = this.find(target.id, parentId);
+            const item = scheme.add(new JsTreeItem(value, target.id));
 
             this._map.set(id, item);
+        }
+    }
+
+    find(id, parentId){
+        let scheme = [this._map.get(parentId)];
+
+        while(scheme.length){
+            let { children } = scheme[0];
+
+            console.log(children);
+
+            if(!children.length) return scheme[0];
+
+            for(let i = 0; i < children.length; i += 1){
+                if(children[i].id === id) return children[i];
+                else if(children && children.length) scheme = [...children];
+            }
         }
     }
 
@@ -189,7 +212,7 @@ const JsTreeRenderer = class {
         const container = this.createChildren();
         const parent = e.target.parentNode;
 
-        console.log(this._dom.$('input', parent));
+        console.log(this._dom.$('label', parent)[0]);
 
         this.create(container, this._dom.$('label', parent)[0].getAttribute('for'));
 
