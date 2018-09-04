@@ -135,7 +135,13 @@ const JsTreeRenderer = class {
     }
 
     get scheme(){
-        return [...this._map];
+        const scheme = [];
+
+        this._map.forEach((v) => {
+            scheme.push(v);
+        });
+
+        return scheme;
     }
 
     createRoot(){
@@ -209,8 +215,6 @@ const JsTreeRenderer = class {
     add(e){
         const container = this.createChildren();
         const parent = e.target.parentNode;
-
-        console.log(this._dom.$('label', parent)[0]);
 
         this.create(container, this._dom.$('label', parent)[0].getAttribute('for'));
 
