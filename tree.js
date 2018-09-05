@@ -185,6 +185,8 @@ const JsTreeRenderer = class {
 
             this._map.set(id, item);
         }
+
+        console.log(this.scheme)
     }
 
     find(id, parentId){
@@ -224,6 +226,9 @@ const JsTreeRenderer = class {
 
         const data = this._map.get(currentTarget.getAttribute('for'));
         const item = this._dom.el('input', 'type', data.type, 'id', data.id, 'value', data.value);
+
+        const { parentId } = currentTarget.parentNode.dataset;
+        const scheme = this.find(currentTarget.id, parentId);
 
         currentTarget.innerHTML = '';
         currentTarget.appendChild(item);
