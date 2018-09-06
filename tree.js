@@ -35,6 +35,20 @@ const Dom = class {
     }
 };
 
+const Store = class {
+    set(name, value){
+        if(!name || typeof name !== 'string') error('Name must be string type');
+
+        localStorage.setItem(name, JSON.stringify(value));
+    }
+
+    get(name){
+        if(!name || typeof name !== 'string') error('Name must be string type');
+
+        return JSON.parse(localStorage.getItem(name));
+    }
+};
+
 /**
  * @desc Throw error
  * @param str
@@ -55,14 +69,6 @@ const JsTree = class {
         this.title = title;
         this.created_at = created_at;
         this.children = [];
-    }
-
-    toJSON(){
-        return {
-            title: this.title,
-            created_at: this.created_at,
-            children: this.children.map(v => v._composite())
-        }
     }
 
     add(tree){
@@ -121,6 +127,7 @@ const JsTreeRenderer = class {
         this._parentId = '';
         this._dom = new Dom();
         this._map = new Map();
+        this._store = new Store();
         this._canvas = canvas.nodeType ? canvas :  this._dom.$(canvas)[0];
 
         this.createRoot();
@@ -169,24 +176,23 @@ const JsTreeRenderer = class {
         const value = target.value.trim();
 
         if(keyCode === 13 && value.length){
-            this.createTree(id, target, value);
+            this.createScheme(id, target, value);
 
             target.parentNode.innerHTML = target.value.trim();
+
+            this._store.set('jstree', this.scheme);
         }
     }
 
-    createTree(id, target, value){
+    createScheme(id, target, value){
         const { parentId } = target.parentNode.dataset;
 
         if(id === undefined) this._map.set(target.id, new JsTreeList(value, target.id));
         else {
             const scheme = this.find(target.id, parentId);
-            const item = scheme.add(new JsTreeItem(value, target.id));
 
-            this._map.set(id, item);
+            scheme.add(new JsTreeItem(value, target.id));
         }
-
-        console.log(this.scheme)
     }
 
     find(id, parentId){
