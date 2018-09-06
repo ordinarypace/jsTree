@@ -57,6 +57,10 @@ const error = (str) => {
     throw new Error(str ? str : 'override!');
 };
 
+const is = (obj, instance) => {
+    return obj instanceof instance;
+};
+
 /**
  * @desc Tree
  * @type {JsTree}
@@ -80,6 +84,7 @@ const JsTree = class {
 
     remove(tree){
         const list = this.children;
+
         if(list.includes(tree)) list.splice(list.indexOf(tree), 1);
     }
 
@@ -117,6 +122,18 @@ const JsTreeItem = class extends JsTree{
     }
 };
 
+const JsTreeState = class {
+    constructor(){
+        this.state = {};
+
+        'ADD, MODIFY, REMOVE'.split(',').forEach(v => {
+            const state = v.trim();
+
+            this.state[state] = Symbol(state);
+        });
+    }
+};
+
 /**
  * @desc Tree Renderer
  * @type {JsTreeRenderer}
@@ -128,6 +145,8 @@ const JsTreeRenderer = class {
         this._dom = new Dom();
         this._map = new Map();
         this._store = new Store();
+        this._state = null;
+        this._symbols = new JsTreeState();
         this._canvas = canvas.nodeType ? canvas :  this._dom.$(canvas)[0];
 
         this.createRoot();
@@ -175,6 +194,8 @@ const JsTreeRenderer = class {
         const { keyCode, target } = e;
         const value = target.value.trim();
 
+        if(!is(this._symbols, JsTreeState)) error('State is not JsTreeState instance');
+
         if(keyCode === 13 && value.length){
             this.createScheme(id, target, value);
 
@@ -191,7 +212,8 @@ const JsTreeRenderer = class {
         else {
             const scheme = this.find(target.id, parentId);
 
-            scheme.add(new JsTreeItem(value, target.id));
+            if(is(this._symbols, JsTreeState) && this._state === this._symbols.state['ADD']) scheme.add(new JsTreeItem(value, target.id));
+            else scheme.title = value;
         }
     }
 
@@ -218,6 +240,8 @@ const JsTreeRenderer = class {
         const container = this.createChildren();
         const parent = e.target.parentNode;
 
+        this._state = this._symbols.state['ADD'];
+
         this.create(container, this._dom.$('label', parent)[0].getAttribute('for'));
 
         parent.appendChild(container);
@@ -229,12 +253,11 @@ const JsTreeRenderer = class {
 
     modify(e){
         const { currentTarget } = e;
-
-        const data = this._map.get(currentTarget.getAttribute('for'));
-        const item = this._dom.el('input', 'type', data.type, 'id', data.id, 'value', data.value);
-
         const { parentId } = currentTarget.parentNode.dataset;
         const scheme = this.find(currentTarget.id, parentId);
+        const item = this._dom.el('input', 'type', 'text', 'id', scheme.id, 'value', scheme.title);
+
+        this._state = this._symbols.state['MODIFY'];
 
         currentTarget.innerHTML = '';
         currentTarget.appendChild(item);
