@@ -214,6 +214,8 @@ const JsTreeRenderer = class {
             target.value.trim();
             target.focus();
 
+            this.updateNodes();
+
             this._store.set('jstree', this.scheme);
         }
     }
@@ -245,18 +247,6 @@ const JsTreeRenderer = class {
         }
     }
 
-    updateNodes(){
-
-    }
-
-    moveNodes(){
-
-    }
-
-    toggleNodes(){
-
-    }
-
     add(e){
         const container = this.createChildren();
         const parent = e.target.parentNode;
@@ -278,5 +268,21 @@ const JsTreeRenderer = class {
 
         currentTarget.innerHTML = '';
         currentTarget.appendChild(item);
+    }
+
+    updateNodes(){
+        this._nodes = this._dom.$('.js-tree__item');
+    }
+
+    moveNodes(){
+        this._dom.on('keyup, keydown', this._nodes, this.activeMoveNodes, false);
+    }
+
+    activeMoveNodes(){
+
+    }
+
+    toggleNodes(){
+
     }
 };
