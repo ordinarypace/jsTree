@@ -1,151 +1,7 @@
-/**
- * @desc DOM 엘리먼트 관련 유틸
- * @type {Dom}
- */
-const Dom = class {
-    el(tag, ...attr){
-        const el = typeof tag === 'string' ? document.createElement(tag) : tag;
+import JsTreeList from 'jstreeList';
+import JsTreeItem from 'jstreeItem';
+import { Dom, Store, error, is } from 'utility';
 
-        for(let i = 0; i < attr.length;){
-            const k = attr[i++], v = attr[i++];
-
-            switch(true){
-                case typeof el[k] === 'function': {
-                    el[k](...(Array.isArray(v) ? v : [v]));
-                    break;
-                }
-                case k[0] === '@': {
-                    el.style[k.substr(1)] = v;
-                    break;
-                }
-                default: {
-                    el[k] = v;
-                    break;
-                }
-            }
-        }
-
-        return el;
-    }
-
-    $(selector, parent){
-        const els = Array.from((parent || document).querySelectorAll(selector));
-
-        return els;
-    }
-
-    on(events, els, func, capture){
-        events.split(',').forEach(e => els.forEach(v => v.addEventListener(e, func, capture)));
-    }
-
-    off(events, els, func){
-        events.split(',').forEach(e => els.forEach(v => v.removeEventListener(e, func)));
-    }
-};
-
-const Store = class {
-    set(name, value){
-        if(!name || typeof name !== 'string') error('Name must be string type');
-
-        localStorage.setItem(name, JSON.stringify(value));
-    }
-
-    get(name){
-        if(!name || typeof name !== 'string') error('Name must be string type');
-
-        return JSON.parse(localStorage.getItem(name));
-    }
-};
-
-/**
- * @desc Throw error
- * @param str
- */
-const error = (str) => {
-    throw new Error(str ? str : 'override!');
-};
-
-const is = (obj, instance) => {
-    return obj instanceof instance;
-};
-
-/**
- * @desc Tree
- * @type {JsTree}
- */
-const JsTree = class {
-    constructor(title, id, created_at = Date.now()){
-        if(!title) error('invalid data!');
-
-        this.id = id;
-        this.title = title;
-        this.created_at = created_at;
-        this.children = [];
-    }
-
-    add(tree){
-        if(tree instanceof JsTree) this.children.push(tree);
-        else error('invalid!');
-
-        return this;
-    }
-
-    remove(tree){
-        const list = this.children;
-
-        if(list.includes(tree)) list.splice(list.indexOf(tree), 1);
-    }
-
-    composite(){
-        const list = this.children;
-
-        return {
-            item: this,
-            children: list.map(v => v._composite())
-        }
-    }
-
-    _composite(){
-        error();
-    }
-};
-
-/**
- * @desc Tree List
- * @type {JsTreeList}
- */
-const JsTreeList = class extends JsTree{
-    constructor(title, id){
-        super(title, id);
-    }
-};
-
-/**
- * @desc Tree Item
- * @type {JsTreeItem}
- */
-const JsTreeItem = class extends JsTree{
-    constructor(title, id){
-        super(title, id);
-    }
-};
-
-const JsTreeState = class {
-    constructor(){
-        this.state = {};
-
-        'ADD, MODIFY, REMOVE'.split(',').forEach(v => {
-            const state = v.trim();
-
-            this.state[state] = Symbol(state);
-        });
-    }
-};
-
-/**
- * @desc Tree Renderer
- * @type {JsTreeRenderer}
- */
 const JsTreeRenderer = class {
     constructor(canvas){
         this._id = 0;
@@ -156,11 +12,8 @@ const JsTreeRenderer = class {
         this._state = null;
         this._symbols = new JsTreeState();
         this._canvas = canvas.nodeType ? canvas :  this._dom.$(canvas)[0];
-        this._nodes = this._dom.$('.js-tree__item');
 
         this.createRoot();
-
-        if(this._nodes.length) this.moveNodes();
     }
 
     get id(){
@@ -210,9 +63,7 @@ const JsTreeRenderer = class {
         if(keyCode === 13 && value.length){
             this.createScheme(id, target, value);
 
-            target.setAttribute('readonly', true);
-            target.value.trim();
-            target.focus();
+            target.parentNode.innerHTML = target.value.trim();
 
             this._store.set('jstree', this.scheme);
         }
@@ -245,18 +96,6 @@ const JsTreeRenderer = class {
         }
     }
 
-    updateNodes(){
-
-    }
-
-    moveNodes(){
-
-    }
-
-    toggleNodes(){
-
-    }
-
     add(e){
         const container = this.createChildren();
         const parent = e.target.parentNode;
@@ -280,3 +119,5 @@ const JsTreeRenderer = class {
         currentTarget.appendChild(item);
     }
 };
+
+export default JsTreeRenderer;
