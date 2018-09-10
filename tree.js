@@ -34,12 +34,12 @@ const Dom = class {
         return els;
     }
 
-    on(events, els, func, capture){
-        events.split(',').forEach(e => els.forEach(v => v.addEventListener(e, func, capture)));
+    on(events, els, callback, capture){
+        events.split(',').forEach(e => els.forEach(v => v.addEventListener(e, callback, capture)));
     }
 
-    off(events, els, func){
-        events.split(',').forEach(e => els.forEach(v => v.removeEventListener(e, func)));
+    off(events, els, callback){
+        events.split(',').forEach(e => els.forEach(v => v.removeEventListener(e, callback)));
     }
 };
 
@@ -157,6 +157,7 @@ const JsTreeRenderer = class {
         this._symbols = new JsTreeState();
         this._canvas = canvas.nodeType ? canvas :  this._dom.$(canvas)[0];
         this._nodes = this._dom.$('.js-tree__item');
+        this._offset = 0;
 
         this.createRoot();
 
@@ -215,6 +216,7 @@ const JsTreeRenderer = class {
             target.focus();
 
             this.updateNodes();
+            this.moveNodes();
 
             this._store.set('jstree', this.scheme);
         }
@@ -258,6 +260,10 @@ const JsTreeRenderer = class {
         parent.appendChild(container);
     }
 
+    index(v){
+        return this._nodes.findIndex((f) => f === v);
+    }
+
     modify(e){
         const { currentTarget } = e;
         const { parentId } = currentTarget.parentNode.dataset;
@@ -274,12 +280,37 @@ const JsTreeRenderer = class {
         this._nodes = this._dom.$('.js-tree__item');
     }
 
-    moveNodes(){
-        this._dom.on('keyup, keydown', this._nodes, this.activeMoveNodes, false);
+    updateOffset(v){
+        this._offset = this.index(v);
     }
 
-    activeMoveNodes(){
+    moveNodes(){
+        this._dom.on('keyup, keydown', this._nodes, e => this.activeMoveNodes(e), false);
+    }
 
+    activeMoveNodes(e){
+        const { keyCode, currentTarget } = e;
+
+        this.updateOffset(currentTarget);
+
+        if(keyCode === 38) this.traversNodes(-1, keyCode);
+        else if(keyCode === 40) this.traversNodes(1, keyCode);
+    }
+
+    traversNodes(direction, code){
+        const nodes = [...this._nodes];
+        let node = [];
+
+        if(this._offset === 0 && code === 38) node = [nodes[nodes.length - 1], nodes[0]];
+        else if(this._offset === nodes.length - 1 && code === 40) node = [nodes[0], nodes[nodes.length - 1]];
+        else node = [nodes[this._offset + direction], nodes[this._offset]];
+
+        this.fitNodes(node);
+    }
+
+    fitNodes(nodes){
+        nodes[0].classList.add('selected');
+        nodes[1].classList.remove('selected');
     }
 
     toggleNodes(){
