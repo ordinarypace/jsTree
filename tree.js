@@ -36,10 +36,14 @@ const Dom = class {
 
     on(events, els, callback, capture){
         events.split(',').forEach(e => els.forEach(v => v.addEventListener(e, callback, capture)));
+
+        return this;
     }
 
     off(events, els, callback){
         events.split(',').forEach(e => els.forEach(v => v.removeEventListener(e, callback)));
+
+        return this;
     }
 };
 
@@ -190,7 +194,7 @@ const JsTreeRenderer = class {
     create(container, id){
         if(!id) this._parentId = this.id;
 
-        const item = this._dom.el('li', 'className', 'js-tree__item', 'setAttribute', ['data-parent-id', this._parentId], 'appendChild',
+        const item = this._dom.el('li', 'className', 'js-tree__item', 'setAttribute', ['data-parent-id', this._parentId], 'addEventListener', ['keyup', e => this.activeMoveNodes(e)], 'appendChild',
             this._dom.el('label', 'setAttribute', ['for', this._id], 'setAttribute', ['data-parent-id', this._parentId], 'addEventListener', ['dblclick', e => this.modify(e)], 'addEventListener', ['keyup', e => this.createLabel(e, id)], 'appendChild',
                 this._dom.el('input', 'type', 'text', 'id', this._id)
             ), 'appendChild',
@@ -217,8 +221,7 @@ const JsTreeRenderer = class {
             target.value.trim();
             target.focus();
 
-            this.updateNodes();
-            this.moveNodes();
+            // this.moveNodes();
 
             this._store.set('jstree', this.schema);
         }
@@ -262,7 +265,6 @@ const JsTreeRenderer = class {
         const parent = e.target.parentNode;
 
         this._state = this._symbols.state['ADD'];
-
         this.create(container, this._dom.$('label', parent)[0].getAttribute('for'));
 
         parent.appendChild(container);
@@ -299,6 +301,7 @@ const JsTreeRenderer = class {
     activeMoveNodes(e){
         const { keyCode, currentTarget } = e;
 
+        this.updateNodes();
         if(this._offset === undefined) this.updateOffset(currentTarget);
 
         if(keyCode === 38) this.traversNodes(-1, keyCode);
@@ -308,6 +311,8 @@ const JsTreeRenderer = class {
     traversNodes(direction, code){
         const nodes = [...this._nodes];
         let node = [];
+
+        console.log(this._offset);
 
         if(this._offset === 0 && code === 38) node = [nodes[nodes.length - 1], nodes[0]];
         else if(this._offset === nodes.length - 1 && code === 40) node = [nodes[0], nodes[nodes.length - 1]];
