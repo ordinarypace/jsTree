@@ -172,7 +172,7 @@ const JsTreeRenderer = class {
         this._id = v;
     }
 
-    get scheme(){
+    get schema(){
         return [...this._map.values()];
     }
 
@@ -211,7 +211,7 @@ const JsTreeRenderer = class {
         if(!is(this._symbols, JsTreeState)) error('State is not JsTreeState instance');
 
         if(keyCode === 13 && value.length){
-            this.createScheme(id, target, value);
+            this.createSchema(id, target, value);
 
             target.setAttribute('readonly', true);
             target.value.trim();
@@ -220,34 +220,34 @@ const JsTreeRenderer = class {
             this.updateNodes();
             this.moveNodes();
 
-            this._store.set('jstree', this.scheme);
+            this._store.set('jstree', this.schema);
         }
     }
 
     //TODO 버튼 위치를 통해 parentId를 가져와야 한다.
-    createScheme(id, target, value){
+    createSchema(id, target, value){
         const { parentId } = target.parentNode.dataset;
 
         if(id === undefined) this._map.set(target.id, new JsTreeList(value, target.id));
         else {
-            const scheme = this.find(target.id, parentId);
+            const schema = this.find(target.id, parentId);
 
-            if(is(this._symbols, JsTreeState) && this._state === this._symbols.state['ADD']) scheme.add(new JsTreeItem(value, target.id));
-            else scheme.title = value;
+            if(is(this._symbols, JsTreeState) && this._state === this._symbols.state['ADD']) schema.add(new JsTreeItem(value, target.id));
+            else schema.title = value;
         }
     }
 
     find(id, parentId){
-        let scheme = [this._map.get(parentId)];
+        let schema = [this._map.get(parentId)];
 
-        while(scheme.length){
-            let { children } = scheme[0];
+        while(schema.length){
+            let { children } = schema[0];
 
-            if(!children.length) return scheme[0];
+            if(!children.length) return schema[0];
 
             for(let i = 0; i < children.length; i += 1){
                 if(children[i].id === id) return children[i];
-                else if(children && children.length) scheme = [...children];
+                else if(children && children.length) schema = [...children];
             }
         }
     }
@@ -275,8 +275,8 @@ const JsTreeRenderer = class {
     modify(e){
         const { currentTarget } = e;
         const { parentId } = currentTarget.parentNode.dataset;
-        const scheme = this.find(currentTarget.id, parentId);
-        const item = this._dom.el('input', 'type', 'text', 'id', scheme.id, 'value', scheme.title);
+        const schema = this.find(currentTarget.id, parentId);
+        const item = this._dom.el('input', 'type', 'text', 'id', schema.id, 'value', schema.title);
 
         this._state = this._symbols.state['MODIFY'];
 
