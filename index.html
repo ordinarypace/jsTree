@@ -27,6 +27,14 @@
         });
     };
 
+    on([document], 'keypress', e => {
+        const { keyCode } = e;
+        console.log(keyCode);
+
+        if(keyCode === 17 && keyCode === 78){
+            jstree.create(el('.js-tree__list')[0]);
+        }
+    }, false);
     on(el('#add'), 'click', _ => jstree.create(el('.js-tree__list')[0]), false);
 </script>
 </body>

@@ -157,7 +157,7 @@ const JsTreeRenderer = class {
         this._symbols = new JsTreeState();
         this._canvas = canvas.nodeType ? canvas :  this._dom.$(canvas)[0];
         this._nodes = this._dom.$('.js-tree__item');
-        this._offset = 0;
+        this._offset = undefined;
 
         this.createRoot();
 
@@ -199,6 +199,8 @@ const JsTreeRenderer = class {
 
         container.appendChild(item);
 
+        this._dom.$('input', item)[0].focus();
+
         this.id += 1;
     }
 
@@ -222,6 +224,7 @@ const JsTreeRenderer = class {
         }
     }
 
+    //TODO 버튼 위치를 통해 parentId를 가져와야 한다.
     createScheme(id, target, value){
         const { parentId } = target.parentNode.dataset;
 
@@ -247,6 +250,11 @@ const JsTreeRenderer = class {
                 else if(children && children.length) scheme = [...children];
             }
         }
+    }
+
+    //TODO 키 매핑
+    mapped(e){
+
     }
 
     add(e){
@@ -276,12 +284,12 @@ const JsTreeRenderer = class {
         currentTarget.appendChild(item);
     }
 
-    updateNodes(){
-        this._nodes = this._dom.$('.js-tree__item');
-    }
-
     updateOffset(v){
         this._offset = this.index(v);
+    }
+
+    updateNodes(){
+        this._nodes = this._dom.$('.js-tree__item');
     }
 
     moveNodes(){
@@ -291,7 +299,7 @@ const JsTreeRenderer = class {
     activeMoveNodes(e){
         const { keyCode, currentTarget } = e;
 
-        this.updateOffset(currentTarget);
+        if(this._offset === undefined) this.updateOffset(currentTarget);
 
         if(keyCode === 38) this.traversNodes(-1, keyCode);
         else if(keyCode === 40) this.traversNodes(1, keyCode);
@@ -311,6 +319,8 @@ const JsTreeRenderer = class {
     fitNodes(nodes){
         nodes[0].classList.add('selected');
         nodes[1].classList.remove('selected');
+
+        this.updateOffset(nodes[0]);
     }
 
     toggleNodes(){
