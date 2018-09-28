@@ -143,6 +143,32 @@ const JsTreeState = class {
 };
 
 /**
+ * 복사: ctrl + c
+ * 붙여넣기: ctrl + v
+ * 저장: ctrl + s
+ * 이름바꾸기: space
+ * 삭제하기: delete
+ * 그룹핑: ctrl + g
+ * 루트 노드 생성: enter
+ * depth 노드 생성: tab
+ *
+ */
+const JsTreeKeyAlias = _ => {
+    return {
+        8: 'backspace',
+        9: 'tab',
+        13: 'enter',
+        16: 'shift',
+        17: 'ctrl',
+        18: 'alt',
+        27: 'esc',
+        32: 'space',
+        38: 'up',
+        40: 'down'
+    };
+};
+
+/**
  * @desc Tree Renderer
  * @type {JsTreeRenderer}
  */
@@ -154,14 +180,15 @@ const JsTreeRenderer = class {
         this._map = new Map();
         this._store = new Store();
         this._state = null;
+        this._keys = [];
         this._symbols = new JsTreeState();
         this._canvas = canvas.nodeType ? canvas :  this._dom.$(canvas)[0];
         this._nodes = this._dom.$('.js-tree__item');
         this._offset = undefined;
+        this._alias = JsTreeKeyAlias();
 
         this.createRoot();
-
-        if(this._nodes.length) this.moveNodes();
+        this.createEvent();
     }
 
     get id(){
@@ -174,6 +201,10 @@ const JsTreeRenderer = class {
 
     get schema(){
         return [...this._map.values()];
+    }
+
+    createEvent(){
+        this._dom.on('keyup, keydown', [document], e => this.mapped(e), false);
     }
 
     createRoot(){
@@ -190,16 +221,21 @@ const JsTreeRenderer = class {
     create(container, id){
         if(!id) this._parentId = this.id;
 
-        const item = this._dom.el('li', 'className', 'js-tree__item', 'setAttribute', ['data-parent-id', this._parentId], 'setAttribute', ['data-loaded', false], 'appendChild',
-            this._dom.el('label', 'setAttribute', ['for', this._id], 'setAttribute', ['data-parent-id', this._parentId], 'addEventListener', ['dblclick', e => this.modify(e)], 'addEventListener', ['keyup', e => this.createLabel(e, id)], 'appendChild',
+        const item = this._dom.el('li', 'className', 'js-tree__item', 'setAttribute', ['data-parent-id', this._parentId], 'appendChild',
+            this._dom.el('label', 'setAttribute', ['for', this._id], 'setAttribute', ['data-parent-id', this._parentId],
+                'addEventListener', ['dblclick', e => this.modify(e)],
+                'addEventListener', ['keypress', e => this.createLabel(e, id)],
+                'addEventListener', ['keyup', e => this.activeMoveNodes(e), false], 'appendChild',
                 this._dom.el('input', 'type', 'text', 'id', this._id)
             ), 'appendChild',
-            this._dom.el('button', 'type', 'button', 'className', 'js-tree__children-add', 'innerHTML', 'Add Children', 'addEventListener', ['click', e => this.add(e, 'children')])
+            this._dom.el('button', 'type', 'button', 'className', 'js-tree__children-add', 'innerHTML', 'Add Children', 'addEventListener', ['click', e => this.addChild(e, 'children')])
         );
 
         container.appendChild(item);
 
         this._dom.$('input', item)[0].focus();
+
+        setTimeout(_ => this.updateNodes(), 0);
 
         this.id += 1;
     }
@@ -216,9 +252,6 @@ const JsTreeRenderer = class {
             target.setAttribute('readonly', true);
             target.value.trim();
             target.focus();
-
-            this.updateNodes();
-            this.moveNodes();
 
             this._store.set('jstree', this.schema);
         }
@@ -252,12 +285,18 @@ const JsTreeRenderer = class {
         }
     }
 
-    //TODO 키 매핑
     mapped(e){
+        const { keyCode } = e;
 
+        this._keys.push(keyCode);
+
+        if(this._keys.length > 0 && this._keys.every(v => this._alias[v])){
+            console.log(this._alias[keyCode]);
+            this._keys.length = 0;
+        }
     }
 
-    add(e){
+    addChild(e){
         const container = this.createChildren();
         const parent = e.target.parentNode;
 
@@ -269,7 +308,15 @@ const JsTreeRenderer = class {
     }
 
     index(v){
-        return this._nodes.findIndex((f) => f === v);
+        return this._nodes.findIndex(f => f === v);
+    }
+
+    updateOffset(v){
+        this._offset = this.index(v);
+    }
+
+    updateNodes(){
+        this._nodes = this._dom.$('.js-tree__item');
     }
 
     modify(e){
@@ -284,43 +331,21 @@ const JsTreeRenderer = class {
         currentTarget.appendChild(item);
     }
 
-    updateOffset(v){
-        this._offset = this.index(v);
-    }
-
-    updateNodes(){
-        this._nodes = this._dom.$('.js-tree__item');
-    }
-
-    moveNodes(){
-        this._dom.on('keyup, keydown', this._nodes, e => {
-            const { currentTarget } = e;
-            console.log(currentTarget);
-
-            if(!currentTarget.dataset.loaded){
-                console.log('aaa')
-                this.activeMoveNodes(e);
-                currentTarget.dataset.loaded = true;
-            }
-
-        }, false);
-    }
-
     activeMoveNodes(e){
         const { keyCode, currentTarget } = e;
 
-        if(this._offset === undefined) this.updateOffset(currentTarget);
+        if(this._offset === undefined) this.updateOffset(currentTarget.parentNode);
 
-        if(keyCode === 38) this.traversNodes(-1, keyCode);
-        else if(keyCode === 40) this.traversNodes(1, keyCode);
+        if(this._alias[keyCode] === 'up') this.traversNodes(-1, keyCode);
+        else if(this._alias[keyCode] === 'down') this.traversNodes(1, keyCode);
     }
 
     traversNodes(direction, code){
         const nodes = [...this._nodes];
         let node = [];
 
-        if(this._offset === 0 && code === 38) node = [nodes[nodes.length - 1], nodes[0]];
-        else if(this._offset === nodes.length - 1 && code === 40) node = [nodes[0], nodes[nodes.length - 1]];
+        if(this._offset === 0 && this._alias[code] === 'up') node = [nodes[nodes.length - 1], nodes[0]];
+        else if(this._offset === nodes.length - 1 && this._alias[code] === 'down') node = [nodes[0], nodes[nodes.length - 1]];
         else node = [nodes[this._offset + direction], nodes[this._offset]];
 
         this.fitNodes(node);
