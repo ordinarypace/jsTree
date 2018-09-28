@@ -142,17 +142,6 @@ const JsTreeState = class {
     }
 };
 
-/**
- * 복사: ctrl + c
- * 붙여넣기: ctrl + v
- * 저장: ctrl + s
- * 이름바꾸기: space
- * 삭제하기: delete
- * 그룹핑: ctrl + g
- * 루트 노드 생성: enter
- * depth 노드 생성: tab
- *
- */
 const JsTreeKeyAlias = _ => {
     return {
         8: 'backspace',
@@ -180,11 +169,11 @@ const JsTreeRenderer = class {
         this._map = new Map();
         this._store = new Store();
         this._state = null;
-        this._keys = [];
         this._symbols = new JsTreeState();
         this._canvas = canvas.nodeType ? canvas :  this._dom.$(canvas)[0];
         this._nodes = this._dom.$('.js-tree__item');
         this._offset = undefined;
+        this._range = document.createRange();
         this._alias = JsTreeKeyAlias();
 
         this.createRoot();
@@ -223,9 +212,10 @@ const JsTreeRenderer = class {
 
         const item = this._dom.el('li', 'className', 'js-tree__item', 'setAttribute', ['data-parent-id', this._parentId], 'appendChild',
             this._dom.el('label', 'setAttribute', ['for', this._id], 'setAttribute', ['data-parent-id', this._parentId],
-                'addEventListener', ['dblclick', e => this.modify(e)],
                 'addEventListener', ['keypress', e => this.createLabel(e, id)],
-                'addEventListener', ['keyup', e => this.activeMoveNodes(e), false], 'appendChild',
+                'addEventListener', ['keyup', e => this.activeMoveNodes(e), false],
+                'addEventListener', ['keyup', e => this.modify(e)],
+                'appendChild',
                 this._dom.el('input', 'type', 'text', 'id', this._id)
             ), 'appendChild',
             this._dom.el('button', 'type', 'button', 'className', 'js-tree__children-add', 'innerHTML', 'Add Children', 'addEventListener', ['click', e => this.addChild(e, 'children')])
@@ -246,7 +236,7 @@ const JsTreeRenderer = class {
 
         if(!is(this._symbols, JsTreeState)) error('State is not JsTreeState instance');
 
-        if(keyCode === 13 && value.length){
+        if(this._alias[keyCode] === 'enter' && value.length){
             this.createSchema(id, target, value);
 
             target.setAttribute('readonly', true);
@@ -285,14 +275,21 @@ const JsTreeRenderer = class {
         }
     }
 
+    /**
+     * 복사: ctrl + c
+     * 붙여넣기: ctrl + v
+     * 저장: ctrl + s
+     * 이름바꾸기: space
+     * 삭제하기: delete
+     * 그룹핑: ctrl + g
+     * 루트 노드 생성: enter
+     * depth 노드 생성: tab
+     */
     mapped(e){
         const { keyCode } = e;
 
-        this._keys.push(keyCode);
-
-        if(this._keys.length > 0 && this._keys.every(v => this._alias[v])){
-            console.log(this._alias[keyCode]);
-            this._keys.length = 0;
+        if(this._alias[keyCode] === 'shift'){
+            if(this._alias[keyCode] === 'down')this.selectRange();
         }
     }
 
@@ -305,6 +302,16 @@ const JsTreeRenderer = class {
         this.create(container, this._dom.$('label', parent)[0].getAttribute('for'));
 
         parent.appendChild(container);
+    }
+
+    selectRange(){
+        const reference = this._nodes[this._offset];
+
+        console.log(range.selectRange(reference));
+    }
+
+    changeType(){
+
     }
 
     index(v){
@@ -320,15 +327,17 @@ const JsTreeRenderer = class {
     }
 
     modify(e){
-        const { currentTarget } = e;
-        const { parentId } = currentTarget.parentNode.dataset;
-        const schema = this.find(currentTarget.id, parentId);
-        const item = this._dom.el('input', 'type', 'text', 'id', schema.id, 'value', schema.title);
+        if(this._alias[e.keyCode] === 'space'){
+            const { currentTarget } = e;
+            const { parentId } = currentTarget.parentNode.dataset;
+            const schema = this.find(currentTarget.id, parentId);
+            const item = this._dom.el('input', 'type', 'text', 'id', schema.id, 'value', schema.title);
 
-        this._state = this._symbols.state['MODIFY'];
+            this._state = this._symbols.state['MODIFY'];
 
-        currentTarget.innerHTML = '';
-        currentTarget.appendChild(item);
+            currentTarget.innerHTML = '';
+            currentTarget.appendChild(item);
+        }
     }
 
     activeMoveNodes(e){
@@ -356,9 +365,5 @@ const JsTreeRenderer = class {
         nodes[1].classList.remove('selected');
 
         this.updateOffset(nodes[0]);
-    }
-
-    toggleNodes(){
-
     }
 };
