@@ -261,9 +261,7 @@ const JsTreeRenderer = class {
         container.appendChild(item);
 
         this._dom.$('input', item)[0].focus();
-
         this.updateNodes();
-
         this.id += 1;
     }
 
