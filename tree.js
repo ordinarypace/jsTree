@@ -41,6 +41,10 @@ const Dom = class {
     off(events, els, callback){
         events.split(',').forEach(e => els.forEach(v => v.removeEventListener(e, callback)));
     }
+
+    insertAfter(newNode, referenceNode) {
+        referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
+    }
 };
 
 const Store = class {
@@ -153,7 +157,8 @@ const JsTreeKeyAlias = _ => {
         27: 'esc',
         32: 'space',
         38: 'up',
-        40: 'down'
+        40: 'down',
+        46: 'delete'
     };
 };
 
@@ -175,27 +180,54 @@ const JsTreeRenderer = class {
         this._offset = undefined;
         this._range = document.createRange();
         this._alias = JsTreeKeyAlias();
+        this._temp = [];
 
         this.createRoot();
         this.createEvent();
     }
 
+    /**
+     * @desc id getter
+     * @returns {number|*}
+     */
     get id(){
         return this._id;
     }
 
+    /**
+     * @desc id setter
+     * @param v
+     */
     set id(v){
         this._id = v;
     }
 
+    /**
+     * @desc schema getter
+     * @returns {[null]}
+     */
     get schema(){
         return [...this._map.values()];
     }
 
+    /**
+     * @desc schema setter
+     * @param v
+     */
+    set schema(v){
+        this._map = v;
+    }
+
+    /**
+     * @desc bind events
+     */
     createEvent(){
         this._dom.on('keyup, keydown', [document], e => this.mapped(e), false);
     }
 
+    /**
+     * @desc create root node
+     */
     createRoot(){
         this._canvas.innerHTML = `
             <ul class="js-tree__list">
@@ -203,33 +235,116 @@ const JsTreeRenderer = class {
         `;
     }
 
+    /**
+     * @desc create children container
+     * @returns {*}
+     */
     createChildren(){
         return this._dom.el('ul', 'className', `js-tree__list child`);
     }
 
+    /**
+     * @desc create node
+     * @param container
+     * @param id
+     */
     create(container, id){
-        if(!id) this._parentId = this.id;
+        let data = {};
 
-        const item = this._dom.el('li', 'className', 'js-tree__item', 'setAttribute', ['data-parent-id', this._parentId], 'appendChild',
-            this._dom.el('label', 'setAttribute', ['for', this._id], 'setAttribute', ['data-parent-id', this._parentId],
-                'addEventListener', ['keypress', e => this.createLabel(e, id)],
-                'addEventListener', ['keyup', e => this.activeMoveNodes(e), false],
-                'addEventListener', ['keyup', e => this.modify(e)],
-                'appendChild',
-                this._dom.el('input', 'type', 'text', 'id', this._id)
-            ), 'appendChild',
-            this._dom.el('button', 'type', 'button', 'className', 'js-tree__children-add', 'innerHTML', 'Add Children', 'addEventListener', ['click', e => this.addChild(e, 'children')])
-        );
+        if(!id){
+            data.parent_id = this.id;
+            data.id = this.id;
+        }
+
+        const item = this.createNode(data);
 
         container.appendChild(item);
 
         this._dom.$('input', item)[0].focus();
 
-        setTimeout(_ => this.updateNodes(), 0);
+        this.updateNodes();
 
         this.id += 1;
     }
 
+    /**
+     * @desc create node element
+     * @param data
+     * @returns {*}
+     */
+    createNode(data){
+        return this._dom.el('li', 'className', 'js-tree__item', 'setAttribute', ['data-parent-id', data.parent_id], 'appendChild',
+            this._dom.el('label', 'setAttribute', ['for', data.id], 'setAttribute', ['data-parent-id', data.parent_id],
+                'addEventListener', ['keypress', e => this.createLabel(e, data.id)],
+                'addEventListener', ['keyup', e => this.activeMoveNodes(e), false],
+                'addEventListener', ['keyup', e => this.modify(e)],
+                'appendChild',
+                this._dom.el('input', 'type', 'text', 'id', data.id, 'value', data.title ? data.title : '', 'readOnly', data.title)
+            ), 'appendChild',
+            this._dom.el('button', 'type', 'button', 'className', 'js-tree__children-add', 'innerHTML', 'Add Children', 'addEventListener', ['click', e => this.addChild(e, 'children')])
+        );
+    }
+
+    /**
+     * @desc renderer
+     * @param parent
+     * @param base
+     * @param data
+     */
+    render(parent, base, data){
+        parent.innerHTML = '';
+
+        if(is(data, JsTreeList)) this._render(parent, base, this.schema);
+        else this._render(parent, base, data);
+
+        this.updateNodes(data);
+        this.updateSchema(data);
+        this.saveSchema();
+    }
+
+    /**
+     * @desc recursive renderer
+     * @param parent
+     * @param base
+     * @param data
+     * @private
+     */
+    _render(parent, base, data){
+        let node;
+        const tree = data.slice(0);
+
+        while(node = tree.shift()){
+            const el = this.createNode(node);
+
+            this._temp.push([parent, base, el]);
+
+            if(!node.children.length) continue;
+            else {
+                const base = this.createChildren();
+
+                node = node.children;
+
+                this._render(el, base, node);
+            }
+        }
+
+        this._temp.forEach(v => {
+            [parent, base, node] = v;
+
+            if(base){
+                base.appendChild(node);
+
+                this._dom.insertAfter(base, this._dom.$('button', parent)[0]);
+            }
+            else parent.appendChild(node);
+        });
+    }
+
+    /**
+     * @desc create label
+     * @param e
+     * @param id
+     */
     createLabel(e, id){
         const { keyCode, target } = e;
         const value = target.value.trim();
@@ -239,14 +354,20 @@ const JsTreeRenderer = class {
         if(this._alias[keyCode] === 'enter' && value.length){
             this.createSchema(id, target, value);
 
-            target.setAttribute('readonly', true);
+            target.readOnly = true;
             target.value.trim();
             target.focus();
 
-            this._store.set('jstree', this.schema);
+            this.saveSchema();
         }
     }
 
+    /**
+     * @desc create schema
+     * @param id
+     * @param target
+     * @param value
+     */
     //TODO 버튼 위치를 통해 parentId를 가져와야 한다.
     createSchema(id, target, value){
         const { parentId } = target.parentNode.dataset;
@@ -260,6 +381,30 @@ const JsTreeRenderer = class {
         }
     }
 
+    /**
+     * @desc modify node item
+     * @param e
+     */
+    modify(e){
+        if(this._alias[e.keyCode] === 'space'){
+            const { currentTarget } = e;
+            const { parentId } = currentTarget.parentNode.dataset;
+            const schema = this.find(currentTarget.id, parentId);
+            const item = this._dom.el('input', 'type', 'text', 'id', schema.id, 'value', schema.title);
+
+            this._state = this._symbols.state['MODIFY'];
+
+            currentTarget.innerHTML = '';
+            currentTarget.appendChild(item);
+        }
+    }
+
+    /**
+     * @desc find node
+     * @param id
+     * @param parentId
+     * @returns {*}
+     */
     find(id, parentId){
         let schema = [this._map.get(parentId)];
 
@@ -285,14 +430,23 @@ const JsTreeRenderer = class {
      * 루트 노드 생성: enter
      * depth 노드 생성: tab
      */
+    /**
+     * @desc mapped key
+     * @param e
+     */
     mapped(e){
         const { keyCode } = e;
+        const key = this._alias[keyCode];
 
-        if(this._alias[keyCode] === 'shift'){
-            if(this._alias[keyCode] === 'down')this.selectRange();
-        }
+        if(key === 'shift' && key === 'down') this.selectRange();
+        else if(key === 'space') this.changeNodeName();
+        else if(key === 'delete') this.removeNode();
     }
 
+    /**
+     * add child node
+     * @param e
+     */
     addChild(e){
         const container = this.createChildren();
         const parent = e.target.parentNode;
@@ -304,42 +458,89 @@ const JsTreeRenderer = class {
         parent.appendChild(container);
     }
 
+    /**
+     * @desc select range
+     */
     selectRange(){
         const reference = this._nodes[this._offset];
+        const { getSelection } = window;
+        const node = this._range.selectNode(reference);
 
-        console.log(range.selectRange(reference));
+        // this._range.setStart(node, 1);
+        // this._range.setEnd(node, 1);
+
+        getSelection().removeAllRanges();
+        // const a = getSelection().addRange(this._range);
     }
 
-    changeType(){
+    /**
+     * @desc change name of node item
+     */
+    changeNodeName(){
+        const node = this._dom.$('input', this._nodes[this._offset])[0];
 
+        node.readOnly = false;
+        node.focus();
     }
 
+    /**
+     * @desc remove node item
+     */
+    removeNode(){
+        const node = this._nodes[this._offset];
+        const index = this.index(node);
+
+        this._nodes.splice(index, 1);
+    }
+
+    /**
+     * @desc get index
+     * @param v
+     * @returns {number}
+     */
     index(v){
         return this._nodes.findIndex(f => f === v);
     }
 
+    /**
+     * @desc update schema
+     * @param data
+     */
+    updateSchema(data){
+        let node = data.slice(0);
+        const schema = new Map();
+
+        this.schema = node.reduce((p, c) => { return p.set(c.id, c), p; }, schema);
+    }
+
+    /**
+     * @desc update offset
+     * @param v
+     */
     updateOffset(v){
         this._offset = this.index(v);
     }
 
+    /**
+     * @desc update nodes
+     */
     updateNodes(){
-        this._nodes = this._dom.$('.js-tree__item');
+        setTimeout(_ => {
+            this._nodes = this._dom.$('.js-tree__item');
+        }, 0);
     }
 
-    modify(e){
-        if(this._alias[e.keyCode] === 'space'){
-            const { currentTarget } = e;
-            const { parentId } = currentTarget.parentNode.dataset;
-            const schema = this.find(currentTarget.id, parentId);
-            const item = this._dom.el('input', 'type', 'text', 'id', schema.id, 'value', schema.title);
-
-            this._state = this._symbols.state['MODIFY'];
-
-            currentTarget.innerHTML = '';
-            currentTarget.appendChild(item);
-        }
+    /**
+     * @desc save schema
+     */
+    saveSchema(){
+        this._store.set('jstree', this.schema);
     }
 
+    /**
+     * @desc activate move for node
+     * @param e
+     */
     activeMoveNodes(e){
         const { keyCode, currentTarget } = e;
 
@@ -349,6 +550,11 @@ const JsTreeRenderer = class {
         else if(this._alias[keyCode] === 'down') this.traversNodes(1, keyCode);
     }
 
+    /**
+     * @desc traverse nodes
+     * @param direction
+     * @param code
+     */
     traversNodes(direction, code){
         const nodes = [...this._nodes];
         let node = [];
@@ -360,6 +566,10 @@ const JsTreeRenderer = class {
         this.fitNodes(node);
     }
 
+    /**
+     * @desc fitting nodes
+     * @param nodes
+     */
     fitNodes(nodes){
         nodes[0].classList.add('selected');
         nodes[1].classList.remove('selected');

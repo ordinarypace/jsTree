@@ -32,7 +32,11 @@
         });
     };
 
+    const data = [{"id":"0","title":"1","created_at":1539653864336,"children":[{"id":"1","title":"1_1","created_at":1539653868441,"children":[{"id":"2","title":"1_2","created_at":1539653870897,"children":[]},{"id":"2","title":"1_2_2","created_at":1539653870897,"children":[{"id":"2","title":"1_2_2","created_at":1539653870897,"children":[{"id":"2","title":"1_2_2","created_at":1539653870897,"children":[{"id":"2","title":"1_2_2","created_at":1539653870897,"children":[{"id":"2","title":"1_2_2","created_at":1539653870897,"children":[{"id":"2","title":"1_2_2","created_at":1539653870897,"children":[{"id":"2","title":"1_2_2","created_at":1539653870897,"children":[{"id":"2","title":"1_2_2","created_at":1539653870897,"children":[]}]}]}]}]}]}]}]}]}]},{"id":"1","title":"1","created_at":1539653864336,"children":[{"id":"1","title":"1_1","created_at":1539653868441,"children":[{"id":"2","title":"1_2","created_at":1539653870897,"children":[]},{"id":"2","title":"1_2_2","created_at":1539653870897,"children":[]}]}]}];
+
     on(el('#add'), 'click', _ => jstree.create(el('.js-tree__list')[0]), false);
+
+    jstree.render(el('.js-tree__list')[0], null, data);
 </script>
 </body>
 </html>
