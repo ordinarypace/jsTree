@@ -159,7 +159,8 @@ const JsTreeKeyAlias = _ => {
         32: 'space',
         38: 'up',
         40: 'down',
-        46: 'delete'
+        46: 'delete',
+        82: 'r'
     };
 };
 
@@ -250,11 +251,12 @@ const JsTreeRenderer = class {
      * @param container
      * @param id
      */
-    create(container, id){
+    create(container, id, root){
         let data = {};
 
         data.parent_id = id ? id : null;
         data.id = +this.id + 1;
+        data.root_id = root;
 
         const item = this.createNode(data);
 
@@ -262,6 +264,7 @@ const JsTreeRenderer = class {
 
         this._dom.$('input', item)[0].focus();
         this.updateNodes();
+        this.id += 1;
     }
 
     /**
@@ -270,15 +273,23 @@ const JsTreeRenderer = class {
      * @returns {*}
      */
     createNode(data){
-        return this._dom.el('li', 'className', 'js-tree__item', 'setAttribute', ['data-parent-id', data.parent_id ? data.parent_id : ''], 'setAttribute', ['data-id', data.id], 'appendChild',
-            this._dom.el('label', 'setAttribute', ['for', data.id], 'setAttribute', ['data-parent-id', data.parent_id],
-                'addEventListener', ['keypress', e => this.createLabel(e, data.id)],
+        return this._dom.el('li', 'className', 'js-tree__item',
+            'setAttribute', ['data-parent-id', data.parent_id ? data.parent_id : ''],
+            'setAttribute', ['data-id', data.id],
+            'setAttribute', ['data-root-id', data.root_id ? data.root_id : data.id],
+            'appendChild',
+            this._dom.el('label',
+                'setAttribute', ['for', data.id],
+                'setAttribute', ['data-parent-id', data.parent_id],
+                'setAttribute', ['data-root-id', data.root_id ? data.root_id : data.id],
+                'addEventListener', ['keypress', e => this.createLabel(e, data)],
                 'addEventListener', ['keyup', e => this.activeMoveNodes(e), false],
                 'addEventListener', ['keyup', e => this.modify(e)],
                 'appendChild',
                 this._dom.el('input', 'type', 'text', 'id', data.id, 'value', data.title ? data.title : '', 'readOnly', data.title)
             ), 'appendChild',
-            this._dom.el('button', 'type', 'button', 'className', 'js-tree__children-add', 'innerHTML', 'Add Children', 'addEventListener', ['click', e => this.addChild(e, 'children')])
+            this._dom.el('button', 'type', 'button', 'className', 'js-tree__children-add', 'innerHTML', 'Add Children', 'addEventListener', ['click', e => this.addChild(e, 'children')]), !data.parent_id ? 'appendChild' : '',
+            this._dom.el('button', 'type', 'button', 'className', 'js-tree__fold', 'innerHTML', 'fold/unfold', 'addEventListener', ['click', e => this.showHide(e)])
         );
     }
 
@@ -313,8 +324,7 @@ const JsTreeRenderer = class {
     createSchema(parent, target, value){
         if(!parent) this._map.set(target.id, new JsTreeList(value, target.id));
         else {
-            console.log(target, target.id, target.parentNode);
-            const schema = this.find(target.id, target.parentNode.dataset.id);
+            const schema = this.find(target.id, target.parentNode.dataset.rootId);
 
             if(is(this._symbols, JsTreeState) && this._state === this._symbols.state['ADD']) schema.add(new JsTreeItem(value, target.id));
             else schema.title = value;
@@ -331,7 +341,7 @@ const JsTreeRenderer = class {
 
         this._state = this._symbols.state['ADD'];
 
-        this.create(container, parent.dataset.id);
+        this.create(container, parent.dataset.id, parent.dataset.rootId);
 
         parent.appendChild(container);
     }
@@ -380,10 +390,7 @@ const JsTreeRenderer = class {
             }
         }
 
-        console.log(this._unique);
-
         this.id = this._unique.sort((a, b) => b - a)[0];
-        console.log(this.id);
         this._temp.forEach(v => {
             [parent, base, node] = v;
 
@@ -421,6 +428,7 @@ const JsTreeRenderer = class {
      * @returns {*}
      */
     find(id, parentId){
+        console.log(parentId);
         let schema = [this._map.get(parentId)];
 
         while(schema.length){
@@ -435,6 +443,15 @@ const JsTreeRenderer = class {
         }
     }
 
+    showHide(e){
+        const { target } = e;
+        const [tree] = this._dom.$('ul', target.parentNode);
+        const { classList } = tree;
+
+        if(classList.contains('fold')) classList.remove('fold');
+        else classList.add('fold')
+    }
+
     /**
      * 복사: ctrl + c
      * 붙여넣기: ctrl + v
@@ -442,7 +459,7 @@ const JsTreeRenderer = class {
      * 이름바꾸기: space
      * 삭제하기: delete
      * 그룹핑: ctrl + g
-     * 루트 노드 생성: enter
+     * 루트 노드 생성: ctrl + r
      * depth 노드 생성: tab
      */
     /**
@@ -456,6 +473,7 @@ const JsTreeRenderer = class {
         if(key === 'shift' && key === 'down') this.selectRange();
         else if(key === 'space') this.changeNodeName();
         else if(key === 'delete') this.removeNode();
+        else if(key === 'ctrl' && key === 'r') this.create(el('.js-tree__list')[0]);
     }
 
     /**
