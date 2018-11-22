@@ -400,7 +400,7 @@ const JsTreeRenderer = class {
 
                 node = node.children;
 
-                this._render(el, base, node);
+                this.untieTree(el, base, node);
             }
         }
 
@@ -417,8 +417,6 @@ const JsTreeRenderer = class {
 
             if(base){
                 base.appendChild(node);
-
-                console.log(v);
 
                 this._dom.insertAfter(base, this._dom.$('button', parent)[0]);
             }
