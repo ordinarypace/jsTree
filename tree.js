@@ -175,7 +175,7 @@ const JsTreeKeyAlias = _ => {
  */
 const JsTreeRenderer = class {
     constructor(canvas){
-        this._id = 1;
+        this._id = 0;
         this._parentId = '';
         this._dom = new Dom();
         this._map = new Map();
@@ -368,8 +368,10 @@ const JsTreeRenderer = class {
 
         if(!data) error('Data is empty!');
 
-        if(is(data, JsTreeList)) this._render(parent, base, this.schema);
-        else this._render(parent, base, data);
+        if(is(data, JsTreeList)) this.untieTree(parent, base, this.schema);
+        else this.untieTree(parent, base, data);
+
+        this._render();
 
         this.updateNodes(data);
         this.updateSchema(data);
@@ -377,13 +379,12 @@ const JsTreeRenderer = class {
     }
 
     /**
-     * @desc recursive renderer
+     * @desc untie json data
      * @param parent
      * @param base
      * @param data
-     * @private
      */
-    _render(parent, base, data){
+    untieTree(parent, base, data){
         let node;
         const tree = data.slice(0);
 
@@ -404,13 +405,22 @@ const JsTreeRenderer = class {
         }
 
         this.id = this._unique.sort((a, b) => b - a)[0];
+    }
+
+    /**
+     * @desc render tree
+     * @private
+     */
+    _render(){
         this._temp.forEach(v => {
-            [parent, base, node] = v;
+            const [parent, base, node] = v;
 
             if(base){
                 base.appendChild(node);
 
-                this._dom.insertAfter(base, this._dom.$('.js-tree__fold', parent)[0]);
+                console.log(v);
+
+                this._dom.insertAfter(base, this._dom.$('button', parent)[0]);
             }
             else parent.appendChild(node);
         });
