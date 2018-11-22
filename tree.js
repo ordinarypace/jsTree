@@ -414,13 +414,13 @@ const JsTreeRenderer = class {
     _render(){
         this._temp.forEach(v => {
             const [parent, base, node] = v;
+            const locate = this._dom.$('.js-tree__fold', parent).length ? '.js-tree__fold' : 'button';
 
             if(base){
                 base.appendChild(node);
 
-                this._dom.insertAfter(base, this._dom.$('button', parent)[0]);
-            }
-            else parent.appendChild(node);
+                this._dom.insertAfter(base, this._dom.$(locate, parent)[0]);
+            } else parent.appendChild(node);
         });
     }
 
