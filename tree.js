@@ -469,10 +469,13 @@ const JsTreeRenderer = class {
     showHide(e){
         const { target } = e;
         const [tree] = this._dom.$('ul', target.parentNode);
-        const { classList } = tree;
 
-        if(classList.contains('fold')) classList.remove('fold');
-        else classList.add('fold')
+        if(tree){
+            const { classList } = tree;
+
+            if(classList.contains('fold')) classList.remove('fold');
+            else classList.add('fold')
+        }
     }
 
     /**
