@@ -45,6 +45,10 @@ const Dom = class {
     insertAfter(newNode, referenceNode) {
         referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
     }
+
+    delay(f){
+        if(typeof f === 'function') setTimeout(f.bind(this), 0);
+    }
 };
 
 const Store = class {
@@ -78,14 +82,15 @@ const is = (obj, instance) => {
  * @type {JsTree}
  */
 const JsTree = class {
-    constructor(title, id, created_at = Date.now(), parentId = null){
+    constructor(title, id, rootId = null, parentId = null){
         if(!title) error('invalid data!');
 
-        this.id = id;
+        this.id = Number(id);
         this.title = title;
-        this.created_at = created_at;
+        this.created_at = Date.now();
         this.children = [];
-        this.parent_id = parentId
+        this.parent_id = Number(parentId);
+        this.root_id = Number(rootId);
     }
 
     add(tree){
@@ -120,7 +125,7 @@ const JsTree = class {
  * @type {JsTreeList}
  */
 const JsTreeList = class extends JsTree{
-    constructor(title, id, root){
+    constructor(title, id){
         super(title, id);
     }
 };
@@ -130,8 +135,8 @@ const JsTreeList = class extends JsTree{
  * @type {JsTreeItem}
  */
 const JsTreeItem = class extends JsTree{
-    constructor(title, id, parentId){
-        super(title, id, parentId);
+    constructor(title, id, rootId, parentId){
+        super(title, id, rootId, parentId);
     }
 };
 
@@ -170,7 +175,7 @@ const JsTreeKeyAlias = _ => {
  */
 const JsTreeRenderer = class {
     constructor(canvas){
-        this._id = 0;
+        this._id = 1;
         this._parentId = '';
         this._dom = new Dom();
         this._map = new Map();
@@ -255,7 +260,7 @@ const JsTreeRenderer = class {
         let data = {};
 
         data.parent_id = id ? id : null;
-        data.id = +this.id + 1;
+        data.id = Number(this.id);
         data.root_id = root;
 
         const item = this.createNode(data);
@@ -263,8 +268,8 @@ const JsTreeRenderer = class {
         container.appendChild(item);
 
         this._dom.$('input', item)[0].focus();
-        this.updateNodes();
         this.id += 1;
+        this.updateNodes();
     }
 
     /**
@@ -312,6 +317,10 @@ const JsTreeRenderer = class {
             target.focus();
 
             this.saveSchema();
+
+            this._dom.delay(_ => {
+                this.traversNodes(1, null);
+            });
         }
     }
 
@@ -322,11 +331,13 @@ const JsTreeRenderer = class {
      * @param value
      */
     createSchema(parent, target, value){
+        const { rootId, parentId } = target.parentNode.dataset;
+
         if(!parent) this._map.set(target.id, new JsTreeList(value, target.id));
         else {
-            const schema = this.find(target.id, target.parentNode.dataset.rootId);
+            const schema = this.find(target.id, rootId, parentId);
 
-            if(is(this._symbols, JsTreeState) && this._state === this._symbols.state['ADD']) schema.add(new JsTreeItem(value, target.id));
+            if(is(this._symbols, JsTreeState) && this._state === this._symbols.state['ADD']) schema.add(new JsTreeItem(value, target.id, rootId, parentId));
             else schema.title = value;
         }
     }
@@ -354,6 +365,8 @@ const JsTreeRenderer = class {
      */
     render(parent, base, data){
         parent.innerHTML = '';
+
+        if(!data) error('Data is empty!');
 
         if(is(data, JsTreeList)) this._render(parent, base, this.schema);
         else this._render(parent, base, data);
@@ -397,7 +410,7 @@ const JsTreeRenderer = class {
             if(base){
                 base.appendChild(node);
 
-                this._dom.insertAfter(base, this._dom.$('button', parent)[0]);
+                this._dom.insertAfter(base, this._dom.$('.js-tree__fold', parent)[0]);
             }
             else parent.appendChild(node);
         });
@@ -408,13 +421,15 @@ const JsTreeRenderer = class {
      * @param e
      */
     modify(e){
-        if(this._alias[e.keyCode] === 'space'){
-            const { currentTarget } = e;
-            const { parentId } = currentTarget.parentNode.dataset;
-            const schema = this.find(currentTarget.id, parentId);
-            const item = this._dom.el('input', 'type', 'text', 'id', schema.id, 'value', schema.title);
+        const { keyCode } = e;
 
+        if(this._alias[keyCode] === 'space'){
             this._state = this._symbols.state['MODIFY'];
+
+            const { currentTarget } = e;
+            const { parentId, rootId } = currentTarget.parentNode.dataset;
+            const schema = this.find(currentTarget.id, rootId, parentId);
+            const item = this._dom.el('input', 'type', 'text', 'id', schema.id, 'value', schema.title);
 
             currentTarget.innerHTML = '';
             currentTarget.appendChild(item);
@@ -427,17 +442,17 @@ const JsTreeRenderer = class {
      * @param parentId
      * @returns {*}
      */
-    find(id, parentId){
-        console.log(parentId);
-        let schema = [this._map.get(parentId)];
+    find(id, rootId, parentId){
+        let schema = [this._map.get(rootId)];
+        let condition = Number(this._state === this._symbols.state['ADD'] ? parentId : id);
 
         while(schema.length){
             let { children } = schema[0];
 
-            if(!children.length) return schema[0];
+            if(rootId === parentId || !children.length) return schema[0];
 
             for(let i = 0; i < children.length; i += 1){
-                if(children[i].id === id) return children[i];
+                if(children[i].id === condition) return children[i];
                 else if(children && children.length) schema = [...children];
             }
         }
@@ -543,9 +558,7 @@ const JsTreeRenderer = class {
      * @desc update nodes
      */
     updateNodes(){
-        setTimeout(_ => {
-            this._nodes = this._dom.$('.js-tree__item');
-        }, 0);
+        this._dom.delay(_ => this._nodes = this._dom.$('.js-tree__item'));
     }
 
     /**
@@ -577,7 +590,9 @@ const JsTreeRenderer = class {
         const nodes = [...this._nodes];
         let node = [];
 
-        if(this._offset === 0 && this._alias[code] === 'up') node = [nodes[nodes.length - 1], nodes[0]];
+        if(nodes.length < 2) return;
+
+        if(!this._offset && this._alias[code] === 'up') node = [nodes[nodes.length - 1], nodes[0]];
         else if(this._offset === nodes.length - 1 && this._alias[code] === 'down') node = [nodes[0], nodes[nodes.length - 1]];
         else node = [nodes[this._offset + direction], nodes[this._offset]];
 
@@ -592,6 +607,6 @@ const JsTreeRenderer = class {
         nodes[0].classList.add('selected');
         nodes[1].classList.remove('selected');
 
-        this.updateOffset(nodes[0]);
+        this.updateOffset(nodes[0])
     }
 };
