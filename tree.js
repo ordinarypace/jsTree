@@ -289,7 +289,6 @@ const JsTreeRenderer = class {
                 'setAttribute', ['data-root-id', data.root_id ? data.root_id : data.id],
                 'addEventListener', ['keypress', e => this.createLabel(e, data)],
                 'addEventListener', ['keyup', e => this.activeMoveNodes(e), false],
-                'addEventListener', ['keyup', e => this.modify(e)],
                 'appendChild',
                 this._dom.el('input', 'type', 'text', 'id', data.id, 'value', data.title ? data.title : '', 'readOnly', data.title)
             ), 'appendChild',
@@ -335,7 +334,7 @@ const JsTreeRenderer = class {
 
         if(!parent) this._map.set(target.id, new JsTreeList(value, target.id));
         else {
-            const schema = this.find(target.id, rootId, parentId);
+            const schema = this.find(target.id, Number(rootId), Number(parentId));
 
             if(is(this._symbols, JsTreeState) && this._state === this._symbols.state['ADD']) schema.add(new JsTreeItem(value, target.id, rootId, parentId));
             else schema.title = value;
@@ -369,7 +368,10 @@ const JsTreeRenderer = class {
         if(!data) error('Data is empty!');
 
         if(is(data, JsTreeList)) this.untieTree(parent, base, this.schema);
-        else this.untieTree(parent, base, data);
+        else {
+            this.syncMap(data);
+            this.untieTree(parent, base, data);
+        }
 
         this._render();
 
@@ -407,6 +409,10 @@ const JsTreeRenderer = class {
         this.id = this._unique.sort((a, b) => b - a)[0];
     }
 
+    syncMap(tree){
+        tree.forEach(v => this._map.set(v.id, v));
+    }
+
     /**
      * @desc render tree
      * @private
@@ -422,26 +428,6 @@ const JsTreeRenderer = class {
                 this._dom.insertAfter(base, this._dom.$(locate, parent)[0]);
             } else parent.appendChild(node);
         });
-    }
-
-    /**
-     * @desc modify node item
-     * @param e
-     */
-    modify(e){
-        const { keyCode } = e;
-
-        if(this._alias[keyCode] === 'space'){
-            this._state = this._symbols.state['MODIFY'];
-
-            const { currentTarget } = e;
-            const { parentId, rootId } = currentTarget.parentNode.dataset;
-            const schema = this.find(currentTarget.id, rootId, parentId);
-            const item = this._dom.el('input', 'type', 'text', 'id', schema.id, 'value', schema.title);
-
-            currentTarget.innerHTML = '';
-            currentTarget.appendChild(item);
-        }
     }
 
     /**
@@ -618,6 +604,7 @@ const JsTreeRenderer = class {
         nodes[0].classList.add('selected');
         nodes[1].classList.remove('selected');
 
-        this.updateOffset(nodes[0])
+        this.updateOffset(nodes[0]);
+        console.log(this._offset);
     }
 };
